@@ -1,25 +1,21 @@
 
 library(shiny)
+library(tidyverse)
+library(ggplot2)
+library(shinydashboard)
 
-# Define UI for application that draws a histogram
-shinyUI(fluidPage(
+cbb <- read_csv("cbb.csv")
 
-    # Application title
-    titlePanel("Old Faithful Geyser Data"),
-
-    # Sidebar with a slider input for number of bins
-    sidebarLayout(
-        sidebarPanel(
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
-        ),
-
-        # Show a plot of the generated distribution
-        mainPanel(
-            plotOutput("distPlot")
+dashboardPage(
+    dashboardHeader(title = "App Dashboard"),
+    dashboardSidebar(
+        sidebarMenu(
+            menuItem("Information", tabname = "info", icon = icon("info")),
+            menuItem("Data Exploration", tabname = "datinfo", icon = icon("book-open")),
+            menuItem("Clustering", tabname = "clust", icon = icon("ethernet")),
+            menuItem("Modeling", tabname = "modeling", icon = icon("brain")),
+            menuItem("Data Save", tabname = "save", icon = icon("folder"))
         )
-    )
-))
+    ),
+    dashboardBody()
+)
