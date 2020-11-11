@@ -26,7 +26,11 @@ dashboardPage(
         tabItems(
             tabItem(tabName = "info",
                     box(title = "Information",  status = "primary", solidHeader = TRUE, 
-                        textOutput("inf")))
+                        htmlOutput("inf")),
+                    box(title = "Purpose", status = "primary", solidHeader = TRUE,
+                        htmlOutput("purp")),
+                    box(title = "Source", status = "primary", solidHeader = TRUE,
+                        uiOutput("src")))
         )
     )
 )
