@@ -42,7 +42,7 @@ shinyServer(function(input, output) {
     output$purp <- renderUI({
         HTML(
             paste0("The purpose of this app is to view what components of team play within college basketball led to success (in the form of a high winning percentage) or failure. Individual teams' statistical trends can be viewed over the course of five seasons, and they can be compared against the average values of each variable over that time span. Supervised and unsupervised prediction models can be used to take a closer look at the response variable of WinPct (winning percentage). Plots viewed on the data exploration tab may be saved, as well as the dataset as a whole (or a subset of it) in the data save tab." , '<br/>',  '<br/>',
-                   "This information tab just gives an overview of the data and app. Clicking on the Data Exploration tab allows you to look at variables for different teams along with their averages. The plot in this tab allows hovering and clicking on the graph as an additional functionality. The Clustering tab allows the user to specify certain aspects of the clustering method and produces a dendogram that may be saved. The Modeling tab allows for two separate supervised learning models to predict for the response of winning percentage based on user-chosen settings. The Data Save tab allows the data set to be viewed, subsetted, and saved.")
+                   "This information tab just gives an overview of the data and app. Clicking on the Data Exploration tab allows you to look at variables for different teams along with their averages. The plot in this tab allows hovering and clicking on the graph as an additional functionality. The Principal Component Analysis tab allows the user to specify certain aspects of the PCA method and produces a biplot of the PC's for visualization. The Modeling tab allows for two separate supervised learning models to predict for the response of winning percentage based on user-chosen settings. The Data Save tab allows the data set to be viewed, subsetted, and saved.")
         )
     })
     
@@ -60,25 +60,24 @@ shinyServer(function(input, output) {
         teams_available <- cbb4Dat[cbb4Dat$CONF == input$conf, "TEAM"]
         
         selectInput("tm", strong("Select a Team"),
-                    choices = unique(teams_available),
-                    selected = '')
+                    choices = unique(teams_available),)
     })
     
     #Team trend line plot
     plotInput <- reactive({
         g <- ggplot(cbb4Dat[cbb4Dat$TEAM == input$tm, ], aes(x = YEAR))
-        ggplotly(g + geom_line(aes_string(y = input$stat)) + geom_point(aes_string(y = input$stat)) +
+        g + geom_line(aes_string(y = input$stat)) + geom_point(aes_string(y = input$stat)) +
                      theme(axis.text.x =element_text(face="bold", color="black", size=12), 
-                           axis.text.y = element_text(face="bold", color="black", size=12)))
+                           axis.text.y = element_text(face="bold", color="black", size=12))
     })
     
     output$teamPlot <- renderPlotly({
-        print(plotInput())
+        print(ggplotly(plotInput()))
     })
     
     #Create download button
     output$dplot <- downloadHandler(
-        filename = function() { paste(input$tm, input$stat, '.png', sep='') },
+        filename = function() { paste(input$tm,"_", input$stat, '.png', sep='') },
         content = function(file) {
             ggsave(file, plot = plotInput(), device = "png")
         })
@@ -86,11 +85,36 @@ shinyServer(function(input, output) {
     #Create summary
     output$avgs <- renderText({
         value <- as.name(input$stat)
-        paste0("The average value across all D1 college basketball for the selected variable of ", input$stat, " is: ", colMeans(cbb[, value]))
+        rslt <- round(colMeans(cbb[, value]), 3)
+        paste0("The average value across all D1 college basketball from 2015-2019 for the selected variable of ", input$stat, " is: ", rslt)
     })
     
-
+    #Create PCA model
+    pcaModel <- reactive({
+        prcomp(select(cbb4Model, input$varsChosen), center = TRUE, scale = TRUE)
+    })
+    
+    #Create biplot for PCA
+    observeEvent(input$showPlot, {
+    output$pcaBiplot <- renderPlot({
+        biplot(pcaModel(), xlabs = rep(".", nrow(cbb4Model)), cex = 1)
+    }, height = 700, width = 900)})
     
     
+    
+    
+    #Create data table
+    output$table <- DT::renderDataTable({
+        datatable(cbb, filter = "top", options = list(scrollX = TRUE))
+    })
+    
+    output$dfile <- downloadHandler(
+        filename = function() {
+            paste("FilteredCBB.csv")
+        },
+        content = function(file) {
+            write.csv(cbb[input[["table_rows_all"]], ], file, row.names = FALSE)
+        }
+    )
 
 })

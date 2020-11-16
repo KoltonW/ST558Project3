@@ -20,7 +20,7 @@ dashboardPage(
         sidebarMenu(
             menuItem("Information", tabName = "info", icon = icon("info")),
             menuItem("Data Exploration", tabName = "datinfo", icon = icon("book-open")),
-            menuItem("Clustering", tabName = "clust", icon = icon("ethernet")),
+            menuItem("Principal Component Analysis", tabName = "pca", icon = icon("dna")),
             menuItem("Modeling", tabName = "modeling", icon = icon("brain")),
             menuItem("Data Save", tabName = "save", icon = icon("folder"))
         )
@@ -39,19 +39,11 @@ dashboardPage(
                     box(title = "Inputs", status = "warning", solidHeader = TRUE, width = 4,
                         h4("Choose options to find team and statistic:"),
                         selectInput("conf", strong("Select a Conference"),
-                                    choices = c("Enter a conference..."="", sort(cbb4Dat$CONF)),
-                                    selected = ''),
-                        conditionalPanel(
-                            condition = "input.conf != '' ",
-                            uiOutput("team_selected")
-                        ),
-                        conditionalPanel(
-                            condition = "input.conf !== '' ",
-                            selectInput("stat", strong("Select a Statistic"),
-                                        choices = c("Choose a variable..."="", names(cbb4Dat2)),
-                                        selected = '')
-                        ),
-                        
+                                    choices = unique(cbb4Dat$CONF)),
+                        uiOutput("team_selected"), 
+                        selectInput("stat", strong("Select a Statistic"),
+                                        choices = names(cbb4Dat2),
+                                        selected = 'WinPct'),
                         downloadButton("dplot", "Download this Plot")
                         
                         ),
@@ -60,7 +52,30 @@ dashboardPage(
                     
                     box(title = "Averages", status = "primary", solidHeader = TRUE, width = 12,
                         textOutput("avgs"))
+                    ),
+            
+            tabItem(tabName = "pca",
+                    box(title = "Inputs", status = "warning", solidHeader = TRUE, width = 4,
+                        h4("Click the checkbox for variables to include in the PC analysis:"),
+                        checkboxGroupInput("varsChosen", "Select 2 Or More Variables", 
+                                           choices = names(cbb4Model), selected = ''),
+                        actionButton("showPlot", "Display Biplot")
+                        ), 
+                    box(title = "PCA Biplot for College Basketball Data", status = "primary", 
+                        solidHeader = TRUE, width = 8, height = 800,
+                        plotOutput("pcaBiplot", width = "100%"))
+            ),
+            
+            
+            
+            tabItem(tabName = "save",
+                    box(title = "College Basketball Data", status = "primary", solidHeader = TRUE,
+                        DT::dataTableOutput("table"), width = 12),
+                    box(title = "Data Download", status = "warning", solidHeader = TRUE,
+                        downloadButton("dfile", "Download Filtered Data"))
                     )
+            
+            
         )
     )
 )
