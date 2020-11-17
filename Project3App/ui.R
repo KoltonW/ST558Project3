@@ -5,6 +5,7 @@ library(plotly)
 library(shinydashboard)
 library(ggplot2)
 library(DT)
+library(caret)
 
 #Bring in data and manipulate it
 cbb <- read_csv("cbb.csv")
@@ -12,8 +13,16 @@ cbb %>% mutate(WinPct = round((W/G), 3)) %>% rename(TwoPt_O = "2P_O", TwoPt_D = 
 cbb %>% select(-POSTSEASON, -SEED) -> cbb4Dat
 cbb %>% select(-POSTSEASON, -SEED, -TEAM, -CONF, -YEAR) -> cbb4Dat2
 cbb %>% select(-TEAM, -CONF, -G, -W, -POSTSEASON, -SEED, -YEAR) -> cbb4Model
+cbb %>% select(-TEAM, -CONF, -G, -W, -POSTSEASON, -SEED, -YEAR, - WinPct) -> cbb4ModelVarPick
 
-#Create App dashboard page
+set.seed(1)
+train <- sample(1:nrow(cbb4Model), size = nrow(cbb4Model)*0.8)
+test <- dplyr::setdiff(1:nrow(cbb4Model), train)
+
+cbbTrain <- cbb4Model[train, ]
+cbbTest <- cbb4Model[test, ]
+
+#Create App dashboard page with several tabs
 dashboardPage(
     dashboardHeader(title = "App Dashboard"),
     dashboardSidebar(
@@ -66,15 +75,43 @@ dashboardPage(
                         plotOutput("pcaBiplot", width = "100%"))
             ),
             
-            
+            tabItem(tabName = "modeling", withMathJax(),
+                    box(title = "Inputs", status = "warning", solidHeader = TRUE, width = 4,
+                        h4("Choose model type, variables, and model options for response variable WinPct:"),
+                        selectInput("modType", strong("Select Model Type"), 
+                                    choices = list("Linear Regression Model", "Boosted Tree Model", " "),
+                                    selected = " "),
+                        conditionalPanel(
+                            condition = "input.modType == 'Linear Regression Model'",
+                            checkboxGroupInput("lrmVars", label = (helpText('Select \\(\\beta\\)s (predictor variables) for Linear Regression Model')),
+                                               choices = names(cbb4ModelVarPick), selected = names(cbb4ModelVarPick),
+                                               inline = TRUE),
+                            actionButton("showLM", "Estimate Model")
+                        ),
+                        conditionalPanel(
+                            condition = "input.modType == 'Boosted Tree Model'",
+                            checkboxGroupInput("rfVars", label = (helpText('Select \\(\\beta\\)s (predictor variables) for Boosted Tree Model')),
+                                               choices = names(cbb4ModelVarPick), selected = names(cbb4ModelVarPick),
+                                               inline = TRUE),
+                            numericInput("intDepth", "Interaction Depth:", value = 5, min = 1,
+                                         max = 10, step = 1),
+                            numericInput("nTrees", "Number of Trees:", value = 200, min = 50,
+                                         max = 2000, step = 50),
+                            numericInput("nminObs", "Number of Min Obs in Node", value = 10, min = 3, max = 12,
+                                         step = 1),
+                            actionButton("showBTM", "Estimate Model")
+                        )
+                        ),
+                    box(title = "Model Output", status = "primary", solidHeader = TRUE, width = 8,
+                        htmlOutput("pred"))
+                    ),
             
             tabItem(tabName = "save",
                     box(title = "College Basketball Data", status = "primary", solidHeader = TRUE,
                         DT::dataTableOutput("table"), width = 12),
                     box(title = "Data Download", status = "warning", solidHeader = TRUE,
                         downloadButton("dfile", "Download Filtered Data"))
-                    )
-            
+            )
             
         )
     )

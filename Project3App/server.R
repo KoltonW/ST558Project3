@@ -5,6 +5,7 @@ library(plotly)
 library(ggplot2)
 library(shinydashboard)
 library(DT)
+library(caret)
 
 #Bring in data and manipulate it
 cbb <- read_csv("cbb.csv")
@@ -12,6 +13,14 @@ cbb %>% mutate(WinPct = round((W/G), 3)) %>% rename(TwoPt_O = "2P_O", TwoPt_D = 
 cbb %>% select(-TEAM, -CONF, -G, -W, -POSTSEASON, -SEED, -YEAR) -> cbb4Model
 cbb %>% select(-POSTSEASON, -SEED) -> cbb4Dat
 cbb %>% select(-POSTSEASON, -SEED, -TEAM, -CONF, -YEAR) -> cbb4Dat2
+cbb %>% select(-TEAM, -CONF, -G, -W, -POSTSEASON, -SEED, -YEAR, - WinPct) -> cbb4ModelVarPick
+
+set.seed(1)
+train <- sample(1:nrow(cbb4Model), size = nrow(cbb4Model)*0.8)
+test <- dplyr::setdiff(1:nrow(cbb4Model), train)
+
+cbbTrain <- cbb4Model[train, ]
+cbbTest <- cbb4Model[test, ]
 
 
 shinyServer(function(input, output) {
@@ -100,8 +109,62 @@ shinyServer(function(input, output) {
         biplot(pcaModel(), xlabs = rep(".", nrow(cbb4Model)), cex = 1)
     }, height = 700, width = 900)})
     
+    #Modeling Section
+    #Linear regression model
+    lmFitRMSE <- reactive({
+        lmfit <- train(as.formula(paste("WinPct ~ ", paste0(input$lrmVars, collapse = "+"))), data = cbbTrain,
+              method = "lm")
+        paste0(lmfit$results$RMSE)
+    })
     
+    lmFitRsq <- reactive({
+        lmfit <- train(as.formula(paste("WinPct ~ ", paste0(input$lrmVars, collapse = "+"))), data = cbbTrain,
+                       method = "lm")
+        paste0(lmfit$results$Rsquared)
+    })
     
+    predLM <- reactive({
+        lmPred <- predict(lmFit(), newdata = dplyr::select(cbbTest, -WinPct))
+    })
+    
+    observeEvent(input$showLM, {
+        output$pred <- renderUI({
+            HTML(
+            paste0("The RMSE for this chosen model is ", lmFitRMSE(), '<br/>',
+            "The Rsquared value for this chosen model is ", lmFitRsq())
+            )
+    })})
+    
+    #Boosted Trees model
+    btFitRMSE <- reactive({
+        btfit <- train(as.formula(paste("WinPct ~ ", paste0(input$lrmVars, collapse = "+"))), data = cbbTrain,
+              method = "gbm", trControl = trainControl(method = "cv", number = 5),
+              preProcess = c("center", "scale"), verbose = FALSE, 
+              tuneGrid = expand.grid(interaction.depth = input$intDepth, n.trees = input$nTrees, 
+                                     shrinkage = 0.1, n.minobsinnode = input$nminObs))
+        paste0(btfit$results$RMSE)
+    })
+    
+    btFitRsq <- reactive({
+        btfit <- train(as.formula(paste("WinPct ~ ", paste0(input$lrmVars, collapse = "+"))), data = cbbTrain,
+                       method = "gbm", trControl = trainControl(method = "cv", number = 5),
+                       preProcess = c("center", "scale"), verbose = FALSE, 
+                       tuneGrid = expand.grid(interaction.depth = input$intDepth, n.trees = input$nTrees, 
+                                              shrinkage = 0.1, n.minobsinnode = input$nminObs))
+        paste0(btfit$results$Rsquared)
+    })
+    
+    predBTM <- reactive({
+        btmPred <- predict(btFit(),  newdata = dplyr::select(cbbTest, -WinPct))
+    })
+    
+    observeEvent(input$showBTM, {
+        output$pred <- renderUI({
+            HTML(
+                paste0("The RMSE for this chosen model is ", btFitRMSE(), '<br/>',
+                "The Rsquared value for this chosen model is ", btFitRsq())
+                )
+    })})
     
     #Create data table
     output$table <- DT::renderDataTable({
