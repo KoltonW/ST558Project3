@@ -10,5 +10,5 @@ install.packages(c("shiny", "tidyverse", "plotly", "ggplot2", "shinydashboard", 
 
 **To Run This Code Through RStudio, Run This Line:**
 
-shiny::runGitHub("ST558Project3/Project3App", "KoltonW")
+shiny::runGitHub("ST558Project3", "KoltonW")
 
