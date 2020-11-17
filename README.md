@@ -8,7 +8,7 @@ This repo contains the components to run an R Shiny app that analyzes college ba
 
 install.packages(c("shiny", "tidyverse", "plotly", "ggplot2", "shinydashboard", "DT", "caret"))
 
-**To Run This Code Through RStudio, Run This Line:**
+**To Run This Code Through RStudio, Run This Line in the Console:**
 
 shiny::runGitHub("ST558Project3", "KoltonW")
 
